@@ -58,6 +58,14 @@ class StudentDetailScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
+                  const Text(
+                    'Total points',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Icon(Icons.stars_rounded, size: 56, color: scheme.secondary),
                   const SizedBox(height: 8),
                   Text(
@@ -74,6 +82,18 @@ class StudentDetailScreen extends StatelessWidget {
           if (pendingClaims.isNotEmpty)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'Unclaimed rewards',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ),
+          if (pendingClaims.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               sliver: SliverList.separated(
                 itemCount: pendingClaims.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -90,7 +110,8 @@ class StudentDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                     ),
                     icon: const Icon(Icons.redeem_rounded),
-                    label: Text('${session.rewardLabel} +${session.pointsPerAnswer}'),
+                    label: Text(
+                        'Claim ${session.rewardLabel} (+${session.pointsPerAnswer})'),
                   );
                 },
               ),

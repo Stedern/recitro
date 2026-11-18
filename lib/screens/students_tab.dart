@@ -2,79 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/recitro_store.dart';
+import '../models/call_outcome.dart';
+import '../models/recitation_session.dart';
 import '../models/student.dart';
+import '../widgets/reward_center_dialog.dart';
 import 'student_detail_screen.dart';
 
 class StudentsTab extends StatelessWidget {
   const StudentsTab({super.key});
 
-  Future<void> _showAddStudent(BuildContext context) async {
-    final nameController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.person_outline_rounded),
-                    hintText: 'Name',
-                  ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? '' : null,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        if (formKey.currentState?.validate() ?? false) {
-                          Navigator.pop(ctx, true);
-                        }
-                      },
-                      child: const Icon(Icons.check_rounded),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    if (ok == true && context.mounted) {
-      await context.read<RecitroStore>().addStudent(nameController.text);
-    }
-  }
-
   Future<void> _confirmDelete(BuildContext context, Student student) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        title: const Text('Delete student?'),
+        content: Text(student.name),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Icon(Icons.close_rounded),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Icon(Icons.delete_outline_rounded),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -92,26 +42,25 @@ class StudentsTab extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
-        SliverAppBar(
+        const SliverAppBar(
           floating: true,
-          title: const Text('Students'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: FilledButton.tonal(
-                onPressed: () => _showAddStudent(context),
-                style: FilledButton.styleFrom(
-                  foregroundColor: scheme.primary,
-                  backgroundColor: scheme.secondary.withValues(alpha: 0.25),
-                ),
-                child: const Icon(Icons.person_add_rounded, size: 28),
-              ),
-            ),
-          ],
+          title: Text('Students'),
         ),
         if (students.isEmpty)
-          const SliverFillRemaining(
-            child: Center(child: Icon(Icons.people_outline_rounded, size: 64, color: Colors.black26)),
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.people_outline_rounded,
+                      size: 64, color: Colors.black26),
+                  SizedBox(height: 12),
+                  Text('No students yet'),
+                  SizedBox(height: 4),
+                  Text('Tap Add in the sidebar'),
+                ],
+              ),
+            ),
           )
         else
           SliverPadding(
@@ -122,6 +71,7 @@ class StudentsTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final student = students[index];
                 final total = store.totalPointsForStudent(student.id);
+                final unclaimed = _unclaimedCount(store, student.id);
                 return Material(
                   color: Colors.white,
                   elevation: 2,
@@ -165,45 +115,31 @@ class StudentsTab extends StatelessWidget {
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: () {
-                              showDialog<void>(
-                                context: context,
-                                builder: (ctx) => Dialog(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24)),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(28),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.stars_rounded,
-                                            size: 48, color: scheme.secondary),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          '$total',
-                                          style: Theme.of(ctx)
-                                              .textTheme
-                                              .displaySmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w900,
-                                                color: scheme.primary,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                            icon: Badge(
-                              label: Text('$total'),
-                              isLabelVisible: total > 0,
-                              child: Icon(Icons.stars_rounded,
+                          if (unclaimed > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: FilledButton.tonal(
+                                onPressed: () => _claimNext(context, student.id),
+                                child: Text('Claim ($unclaimed)'),
+                              ),
+                            ),
+                          Tooltip(
+                            message: 'Total points',
+                            child: TextButton.icon(
+                              onPressed: () {},
+                              icon: Icon(Icons.stars_rounded,
                                   color: scheme.secondary),
+                              label: Text(
+                                '$total',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                           ),
                           IconButton(
+                            tooltip: 'Delete',
                             onPressed: () =>
                                 _confirmDelete(context, student),
                             icon: const Icon(Icons.delete_outline_rounded),
@@ -217,6 +153,44 @@ class StudentsTab extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  int _unclaimedCount(RecitroStore store, String studentId) {
+    var n = 0;
+    for (final session in store.sessions) {
+      final state = session.studentStates[studentId];
+      if (state != null &&
+          state.outcome == CallOutcome.answered &&
+          !state.rewardClaimed) {
+        n++;
+      }
+    }
+    return n;
+  }
+
+  Future<void> _claimNext(BuildContext context, String studentId) async {
+    final store = context.read<RecitroStore>();
+    RecitationSession? target;
+    for (final session in store.sessions) {
+      final state = session.studentStates[studentId];
+      if (state != null &&
+          state.outcome == CallOutcome.answered &&
+          !state.rewardClaimed) {
+        target = session;
+        break;
+      }
+    }
+    if (target == null) return;
+    final student = store.studentById(studentId);
+    if (student == null) return;
+
+    await showRewardCenterDialog(
+      context: context,
+      studentName: student.name,
+      rewardLabel: target.rewardLabel,
+      points: target.pointsPerAnswer,
+      onClaim: () => store.claimReward(target!, studentId),
     );
   }
 }

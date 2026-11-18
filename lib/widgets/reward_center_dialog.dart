@@ -84,7 +84,7 @@ Future<void> showRewardCenterDialog({
                 const SizedBox(height: 28),
                 if (alreadyClaimed)
                   Icon(Icons.verified_rounded, color: scheme.tertiary, size: 40)
-                else
+                else ...[
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
@@ -95,13 +95,22 @@ Future<void> showRewardCenterDialog({
                         }
                       },
                       icon: const Icon(Icons.handshake_rounded),
-                      label: const Text('Claim'),
+                      label: const Text('Claim reward'),
                       style: FilledButton.styleFrom(
                         backgroundColor: scheme.secondary,
                         foregroundColor: scheme.onSecondary,
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text('Skip for now'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

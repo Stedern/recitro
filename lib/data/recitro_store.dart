@@ -16,6 +16,8 @@ class RecitroStore extends ChangeNotifier {
   RecitroStore();
 
   static const _uuid = Uuid();
+  static const int primaryPickWeight = 10;
+  static const int answeredRecallPickWeight = 2;
   final List<Student> _students = [];
   final List<RecitationSession> _sessions = [];
   final List<PointLedgerEntry> _ledger = [];
@@ -94,6 +96,7 @@ class RecitroStore extends ChangeNotifier {
     required int pointsPerAnswer,
     required String rewardLabel,
     required bool allowRecallUnanswered,
+    required bool allowRecallAnswered,
   }) async {
     final states = <String, StudentSessionState>{};
     for (final student in _students) {
@@ -106,6 +109,7 @@ class RecitroStore extends ChangeNotifier {
         pointsPerAnswer: pointsPerAnswer,
         rewardLabel: rewardLabel.trim(),
         allowRecallUnanswered: allowRecallUnanswered,
+        allowRecallAnswered: allowRecallAnswered,
         studentStates: states,
       ),
     );
@@ -119,30 +123,60 @@ class RecitroStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  int pickWeightForStudent(RecitationSession session, Student student) {
+    if (session.pendingStudentId != null) return 0;
+    final state = session.studentStates[student.id];
+    if (state == null || state.outcome == CallOutcome.pending) return 0;
+    return switch (state.outcome) {
+      CallOutcome.notCalled => primaryPickWeight,
+      CallOutcome.notAnswered =>
+        session.allowRecallUnanswered ? primaryPickWeight : 0,
+      CallOutcome.answered =>
+        session.allowRecallAnswered ? answeredRecallPickWeight : 0,
+      CallOutcome.pending => 0,
+    };
+  }
+
+  bool hasCallableStudents(RecitationSession session) {
+    if (session.pendingStudentId != null) return false;
+    for (final student in _students) {
+      if (pickWeightForStudent(session, student) > 0) return true;
+    }
+    return false;
+  }
+
   List<Student> eligibleStudents(RecitationSession session) {
-    if (session.pendingStudentId != null) return [];
-    return _students.where((student) {
-      final state = session.studentStates[student.id];
-      if (state == null) return false;
-      if (state.outcome == CallOutcome.answered ||
-          state.outcome == CallOutcome.pending) {
-        return false;
-      }
-      if (state.outcome == CallOutcome.notCalled) return true;
-      if (state.outcome == CallOutcome.notAnswered) {
-        return session.allowRecallUnanswered;
-      }
-      return false;
-    }).toList();
+    return _students
+        .where((s) => pickWeightForStudent(session, s) > 0)
+        .toList(growable: false);
   }
 
   Future<String?> pickRandomStudent(RecitationSession session) async {
     if (session.pendingStudentId != null) return null;
-    final pool = eligibleStudents(session);
-    if (pool.isEmpty) return null;
-    final picked = pool[Random().nextInt(pool.length)];
+    final weights = <Student, int>{};
+    for (final student in _students) {
+      final w = pickWeightForStudent(session, student);
+      if (w > 0) weights[student] = w;
+    }
+    if (weights.isEmpty) return null;
+
+    final total = weights.values.fold<int>(0, (a, b) => a + b);
+    var roll = Random().nextInt(total);
+    Student? picked;
+    for (final entry in weights.entries) {
+      roll -= entry.value;
+      if (roll < 0) {
+        picked = entry.key;
+        break;
+      }
+    }
+    picked ??= weights.keys.first;
+
     final state = session.studentStates[picked.id];
     if (state == null) return null;
+    if (state.outcome == CallOutcome.answered) {
+      state.rewardClaimed = false;
+    }
     state.outcome = CallOutcome.pending;
     session.pendingStudentId = picked.id;
     await _save();

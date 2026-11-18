@@ -63,7 +63,7 @@ class _CallFlowDialogState extends State<_CallFlowDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 440),
+        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 480),
         child: PageView(
           controller: _pageController,
           physics: const NeverScrollableScrollPhysics(),
@@ -73,6 +73,13 @@ class _CallFlowDialogState extends State<_CallFlowDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Text(
+                    'Called',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: scheme.outline,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
                   CircleAvatar(
                     radius: 44,
                     backgroundColor: scheme.primary.withValues(alpha: 0.12),
@@ -100,27 +107,27 @@ class _CallFlowDialogState extends State<_CallFlowDialog> {
                   Row(
                     children: [
                       Expanded(
-                        child: FilledButton(
+                        child: FilledButton.icon(
                           onPressed: () async {
-                            final s =
-                                store.sessionById(widget.sessionId);
+                            final s = store.sessionById(widget.sessionId);
                             if (s != null) await store.markAnswered(s);
                             if (!context.mounted) return;
                             _goToReward();
                           },
-                          child: const Icon(Icons.check_rounded, size: 28),
+                          icon: const Icon(Icons.check_rounded),
+                          label: const Text('Answered'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: OutlinedButton(
+                        child: OutlinedButton.icon(
                           onPressed: () async {
-                            final s =
-                                store.sessionById(widget.sessionId);
+                            final s = store.sessionById(widget.sessionId);
                             if (s != null) await store.markNotAnswered(s);
                             if (context.mounted) Navigator.of(context).pop();
                           },
-                          child: const Icon(Icons.close_rounded, size: 28),
+                          icon: const Icon(Icons.close_rounded),
+                          label: const Text('Not answered'),
                         ),
                       ),
                     ],
@@ -133,6 +140,13 @@ class _CallFlowDialogState extends State<_CallFlowDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Text(
+                    'Reward',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: scheme.outline,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
                   Container(
                     width: 80,
                     height: 80,
@@ -157,14 +171,22 @@ class _CallFlowDialogState extends State<_CallFlowDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.stars_rounded, color: scheme.secondary, size: 32),
+                      Icon(Icons.stars_rounded,
+                          color: scheme.secondary, size: 32),
                       Text(
                         '+${widget.session.pointsPerAnswer}',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'You can claim later from Students.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.outline, fontSize: 13),
                   ),
                   const Spacer(),
                   SizedBox(
@@ -178,11 +200,19 @@ class _CallFlowDialogState extends State<_CallFlowDialog> {
                         if (context.mounted) Navigator.of(context).pop();
                       },
                       icon: const Icon(Icons.handshake_rounded),
-                      label: const Text('Claim'),
+                      label: const Text('Claim now'),
                       style: FilledButton.styleFrom(
                         backgroundColor: scheme.secondary,
                         foregroundColor: scheme.onSecondary,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Skip for now'),
                     ),
                   ),
                 ],

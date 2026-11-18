@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../data/recitro_store.dart';
 import '../models/call_outcome.dart';
+import '../models/recitation_session.dart';
 import '../widgets/call_flow_dialog.dart';
 import '../widgets/reward_center_dialog.dart';
 
@@ -17,6 +18,47 @@ class SessionDetailScreen extends StatefulWidget {
 
 class _SessionDetailScreenState extends State<SessionDetailScreen> {
   bool _dialogOpen = false;
+
+  int _infoBannerCount(RecitationSession session) {
+    var n = 0;
+    if (session.allowRecallUnanswered) n++;
+    if (session.allowRecallAnswered) n++;
+    return n;
+  }
+
+  Widget? _infoBannerAt(RecitationSession session, int index) {
+    var cursor = 0;
+    if (session.allowRecallUnanswered) {
+      if (index == cursor) {
+        return Card(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+          child: const ListTile(
+            leading: Icon(Icons.replay_rounded),
+            title: Text('Recall if not answered is on'),
+            subtitle: Text(
+              'Students who did not answer can be called again.',
+            ),
+          ),
+        );
+      }
+      cursor++;
+    }
+    if (session.allowRecallAnswered) {
+      if (index == cursor) {
+        return Card(
+          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12),
+          child: const ListTile(
+            leading: Icon(Icons.low_priority_rounded),
+            title: Text('Recall if answered is on'),
+            subtitle: Text(
+              'Already-answered students can be called again with lower chance.',
+            ),
+          ),
+        );
+      }
+    }
+    return null;
+  }
 
   Future<void> _openCallFlow(String studentId) async {
     if (_dialogOpen) return;
@@ -98,15 +140,15 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       return const Scaffold(body: Center(child: Icon(Icons.error_outline)));
     }
 
-    final canCall = store.eligibleStudents(session).isNotEmpty &&
-        session.pendingStudentId == null &&
-        store.students.isNotEmpty;
+    final canCall =
+        store.hasCallableStudents(session) && store.students.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(session.name),
         actions: [
           IconButton(
+            tooltip: 'Delete session',
             onPressed: () async {
               await store.deleteSession(session.id);
               if (context.mounted) Navigator.of(context).pop();
@@ -124,10 +166,13 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       ),
       body: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-        itemCount: store.students.length,
+        itemCount: store.students.length + _infoBannerCount(session),
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
-          final student = store.students[index];
+          final banner = _infoBannerAt(session, index);
+          if (banner != null) return banner;
+          final studentIndex = index - _infoBannerCount(session);
+          final student = store.students[studentIndex];
           final state = session.studentStates[student.id];
           final outcome = state?.outcome ?? CallOutcome.notCalled;
           final showReward = outcome == CallOutcome.answered;
@@ -165,9 +210,12 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   ),
                   if (showReward)
                     IconButton(
+                      tooltip: state.rewardClaimed
+                          ? 'Reward claimed'
+                          : 'Claim reward',
                       onPressed: () => _showReward(store, student.id),
                       style: IconButton.styleFrom(
-                        backgroundColor: state!.rewardClaimed
+                        backgroundColor: state.rewardClaimed
                             ? scheme.tertiary.withValues(alpha: 0.2)
                             : scheme.secondary.withValues(alpha: 0.35),
                       ),

@@ -7,6 +7,7 @@ class RecitationSession {
     required this.pointsPerAnswer,
     required this.rewardLabel,
     required this.allowRecallUnanswered,
+    required this.allowRecallAnswered,
     required this.studentStates,
     this.pendingStudentId,
   });
@@ -16,6 +17,7 @@ class RecitationSession {
   int pointsPerAnswer;
   String rewardLabel;
   bool allowRecallUnanswered;
+  bool allowRecallAnswered;
   Map<String, StudentSessionState> studentStates;
   String? pendingStudentId;
 
@@ -25,6 +27,7 @@ class RecitationSession {
         'pointsPerAnswer': pointsPerAnswer,
         'rewardLabel': rewardLabel,
         'allowRecallUnanswered': allowRecallUnanswered,
+        'allowRecallAnswered': allowRecallAnswered,
         'pendingStudentId': pendingStudentId,
         'studentStates': studentStates.map(
           (key, value) => MapEntry(key, value.toJson()),
@@ -38,6 +41,7 @@ class RecitationSession {
         pointsPerAnswer: json['pointsPerAnswer'] as int,
         rewardLabel: (json['rewardLabel'] as String?) ?? 'Reward',
         allowRecallUnanswered: json['allowRecallUnanswered'] as bool,
+        allowRecallAnswered: json['allowRecallAnswered'] as bool? ?? false,
         pendingStudentId: json['pendingStudentId'] as String?,
         studentStates: (json['studentStates'] as Map<String, dynamic>).map(
           (key, value) => MapEntry(

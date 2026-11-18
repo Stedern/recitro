@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../flows/session_create_flow.dart';
+import '../flows/student_create_flow.dart';
 import 'sessions_tab.dart';
 import 'students_tab.dart';
 
@@ -15,21 +17,38 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   ShellSection _section = ShellSection.sessions;
 
+  Future<void> _onAdd() async {
+    switch (_section) {
+      case ShellSection.sessions:
+        await showSessionCreateFlow(context);
+      case ShellSection.students:
+        await showStudentCreateFlow(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final extended = MediaQuery.sizeOf(context).width > 720;
+
     return Scaffold(
       body: Row(
         children: [
           NavigationRail(
-            extended: MediaQuery.sizeOf(context).width > 720,
+            extended: extended,
             backgroundColor: scheme.primary,
             selectedIndex: _section.index,
-            onDestinationSelected: (i) =>
-                setState(() => _section = ShellSection.values[i]),
+            onDestinationSelected: (i) {
+              if (i == 2) {
+                _onAdd();
+                return;
+              }
+              setState(() => _section = ShellSection.values[i]);
+            },
             leading: Padding(
               padding: const EdgeInsets.only(top: 12, bottom: 8),
-              child: Icon(Icons.school_rounded, color: scheme.secondary, size: 32),
+              child:
+                  Icon(Icons.school_rounded, color: scheme.secondary, size: 32),
             ),
             destinations: const [
               NavigationRailDestination(
@@ -41,6 +60,11 @@ class _MainShellState extends State<MainShell> {
                 icon: Icon(Icons.people_outline_rounded),
                 selectedIcon: Icon(Icons.people_rounded),
                 label: Text('Students'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.add_circle_outline_rounded),
+                selectedIcon: Icon(Icons.add_circle_rounded),
+                label: Text('Add'),
               ),
             ],
           ),
