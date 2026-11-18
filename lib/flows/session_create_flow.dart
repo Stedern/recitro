@@ -8,7 +8,8 @@ import '../widgets/center_wizard_dialog.dart';
 Future<void> showSessionCreateFlow(BuildContext context) async {
   final nameController = TextEditingController();
   final rewardController = TextEditingController(text: 'Star');
-  final pointsController = TextEditingController(text: '1');
+  final pointsController = TextEditingController(text: '5');
+  final thresholdController = TextEditingController(text: '10');
   var allowRecallUnanswered = false;
   var allowRecallAnswered = false;
   final formKey = GlobalKey<FormState>();
@@ -108,9 +109,31 @@ Future<void> showSessionCreateFlow(BuildContext context) async {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(
-                labelText: 'Points when claimed',
+                labelText: 'Points per answer',
+                helperText: 'Added each time the student answers correctly.',
+                prefixIcon: Icon(Icons.add_circle_outline_rounded),
+              ),
+              validator: (v) {
+                final n = int.tryParse(v ?? '');
+                if (n == null || n < 1) return 'Min 1';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: thresholdController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: 'Points needed to claim reward',
+                helperText: 'Example: 5 per answer, 10 needed → two correct answers.',
                 prefixIcon: Icon(Icons.stars_rounded),
               ),
+              validator: (v) {
+                final n = int.tryParse(v ?? '');
+                if (n == null || n < 1) return 'Min 1';
+                return null;
+              },
             ),
             const Spacer(),
             Row(
@@ -122,7 +145,12 @@ Future<void> showSessionCreateFlow(BuildContext context) async {
                 ),
                 const Spacer(),
                 FilledButton.icon(
-                  onPressed: () => Navigator.of(ctx).pop(true),
+                  onPressed: () {
+                    final per = int.tryParse(pointsController.text) ?? 0;
+                    final need = int.tryParse(thresholdController.text) ?? 0;
+                    if (per < 1 || need < 1) return;
+                    Navigator.of(ctx).pop(true);
+                  },
                   icon: const Icon(Icons.check_rounded),
                   label: const Text('Create'),
                 ),
@@ -135,10 +163,12 @@ Future<void> showSessionCreateFlow(BuildContext context) async {
   );
 
   if (ok == true && context.mounted) {
-    final points = int.tryParse(pointsController.text) ?? 1;
+    final points = int.tryParse(pointsController.text) ?? 5;
+    final threshold = int.tryParse(thresholdController.text) ?? 10;
     await context.read<RecitroStore>().addSession(
           name: nameController.text,
           pointsPerAnswer: points,
+          pointsRequiredForReward: threshold,
           rewardLabel: rewardController.text.trim().isEmpty
               ? 'Reward'
               : rewardController.text.trim(),

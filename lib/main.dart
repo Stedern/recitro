@@ -5,7 +5,7 @@ import 'data/recitro_store.dart';
 import 'screens/main_shell.dart';
 import 'theme/app_theme.dart';
 
-Future<void> main() async {
+Future<void>  main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = RecitroStore();
   await store.init();

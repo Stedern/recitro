@@ -102,7 +102,9 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       context: context,
       studentName: student.name,
       rewardLabel: session.rewardLabel,
-      points: session.pointsPerAnswer,
+      pointsEarned: state.pointsEarned,
+      pointsRequired: session.pointsRequiredForReward,
+      canClaim: store.canClaimReward(session, studentId),
       alreadyClaimed: state.rewardClaimed,
       onClaim: () => store.claimReward(session, studentId),
     );
@@ -175,7 +177,13 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
           final student = store.students[studentIndex];
           final state = session.studentStates[student.id];
           final outcome = state?.outcome ?? CallOutcome.notCalled;
-          final showReward = outcome == CallOutcome.answered;
+          final canClaim = state != null &&
+              store.canClaimReward(session, student.id);
+          final accumulating = state != null &&
+              outcome == CallOutcome.answered &&
+              !state.rewardClaimed &&
+              state.pointsEarned > 0;
+          final showReward = accumulating || canClaim;
 
           return Material(
             color: _accentFor(outcome, scheme),
@@ -200,15 +208,29 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      student.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          student.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                        if (accumulating || canClaim)
+                          Text(
+                            '${state!.pointsEarned} / ${session.pointsRequiredForReward} pts',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.outline,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  if (showReward)
+                  if (showReward && state != null)
                     IconButton(
                       tooltip: state.rewardClaimed
                           ? 'Reward claimed'

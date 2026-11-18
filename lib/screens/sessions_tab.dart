@@ -117,8 +117,18 @@ class _SessionCard extends StatelessWidget {
                         const SizedBox(width: 12),
                         Icon(Icons.stars_rounded,
                             size: 16, color: scheme.secondary),
-                        Text('+${session.pointsPerAnswer}',
-                            style: TextStyle(color: scheme.secondary)),
+                        Text(
+                          '+${session.pointsPerAnswer}/answer',
+                          style: TextStyle(color: scheme.secondary),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${session.pointsRequiredForReward} to claim',
+                          style: TextStyle(
+                            color: scheme.outline,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                     if (session.allowRecallUnanswered ||

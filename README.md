@@ -36,7 +36,8 @@ You need an **Android device in the list** before Run works in the IDE:
    ```  
    This uses **Pixel 8 · API 37 · Google Play** with lighter RAM/CPU so it does not hang on ~8 GB RAM.  
    If adb stays `offline`, retry once with `.\scripts\start-pixel8-emulator.ps1 -WipeData -Wait` (factory-resets the AVD only).
-2. **Emulator (Android Studio):** Device Manager → ▶ **Pixel 8** — close extra emulator windows if more than one is open.
+2. **Emulator (Android Studio):** Use **Pixel 8** only — **not** `Medium_Phone_API_37.0`.  
+   If you see `FATAL | Running multiple emulators with the same AVD`, run `.\scripts\stop-all-emulators.ps1` and start again with `.\scripts\start-pixel8-emulator.ps1 -Wait`.
 3. **Physical phone:** USB cable + **USB debugging** on → allow PC when prompted.
 4. Check: `flutter devices` — you should see an `android` / `emulator-####` line (not `offline`).
 
@@ -63,21 +64,48 @@ Accept Android SDK licenses once if `flutter doctor` reports them: `flutter doct
 
 Debug APK (after first build): `build\app\outputs\flutter-apk\app-debug.apk`
 
-**`ADB exited with exit code 1` / install failed**
+**`ADB exited with exit code 1` / `Broken pipe (32)` / `force-stop` timed out**
 
-Usually **two emulators** (e.g. `5554` + `5556`) or a **stuck install** on a slow AVD:
+Usually **two emulators**, **Package Manager hung**, or **install while the AVD is restarting**:
 
-1. Close every emulator except one Pixel 8 window (Device Manager → stop extras).
-2. `.\scripts\reset-android-app.ps1` then `flutter run -d emulator-5554` (use the id from `flutter devices`).
-3. Prefer `.\scripts\start-pixel8-emulator.ps1 -Wait` before Run — it stops other emulators first.
+1. Close every emulator except **one Pixel 8** (Device Manager → stop extras).
+2. `.\scripts\ensure-pixel8-ready.ps1` (reboots once if `pm` is stuck).
+3. `.\scripts\reset-android-app.ps1` then Run again.
+4. Or one shot: `.\scripts\run-pixel8.ps1`
 
-Streamed install on this PC can take **1–2 minutes**; wait once before retrying.
+Streamed install can take **~20–90 seconds** on this AVD — do not spam Retry.
 
-**Android Studio Run fails at install:** Only one Pixel 8 emulator should run. If it still fails, run **Tools → External Tools → Reset Recitro on Android** (or `.\scripts\reset-android-app.ps1`), then Run again. Debug builds use the smaller **x86_64** APK (`split-per-abi` in `android/gradle.properties`).
+**Android Studio (Pixel 8 only):**
+
+- Device dropdown → **sdk gphone64 x86 64 (emulator-5554)** (not Chrome/Windows).
+- **Run → Edit Configurations →** your Flutter config → **Additional run args:**  
+  `-d emulator-5554 --target-platform=android-x64`
+- **Before every Run** (Android Studio does not wait for Package Manager):  
+  ```powershell
+  .\scripts\prepare-android-studio-run.ps1
+  ```  
+  Wait until you see **`Ready: emulator-5554`** (can take 1–3 min after emulator window opens). Then click **Run**.
+- If install still fails: `.\scripts\install-android-studio-run.ps1`
+
+**`device is still booting`:** adb sees the emulator before `pm` is up. Do **not** click Run as soon as the window appears — run `prepare-android-studio-run.ps1` first or wait for the home screen + another ~30s on slow boots.
+
+Debug builds use the **x86_64** APK (`split-per-abi` + copy hook in `android/app/build.gradle.kts`).
+
+**Blank / frozen emulator after Run (app “wala jud”)**
+
+Android Studio often runs with **`--start-paused`**. The app is waiting on the debugger — press **Resume Program (F9)** or the green **▶** on the debug toolbar so the UI draws.
+
+Or use **Tools → External Tools → Run Recitro on Pixel 8** (wait + run, no pause).
+
+**Only one emulator (required)**
+
+Your PC has ~7.5 GB RAM free — **never run two emulators**. In Device Manager use **Pixel 8** only; stop **Medium Phone** if it is running.  
+Quick fix: `.\scripts\stop-all-emulators.ps1` then `.\scripts\start-pixel8-emulator.ps1 -Wait`.
 
 **Run in Android Studio**
 
-1. **File → Open** → `C:\Users\Jay\Projects\recitro` (the Flutter project root — not the `android` folder alone).
+1. **File → Open** → `C:\Users\Jay\Projects\recitro` (the Flutter project root — not the `android` folder alone).  
+   Default run config: **Recitro (Pixel 8)** (runs **Ensure Pixel 8 ready** before launch).
 2. **Install the Flutter plugin** (required — without it you get `Unknown run configuration type FlutterRunConfigurationType`):
    - **File → Settings → Plugins** (on macOS: **Android Studio → Settings → Plugins**)
    - **Marketplace** → search **Flutter** → **Install** (this also installs **Dart**)

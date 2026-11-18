@@ -94,6 +94,7 @@ class RecitroStore extends ChangeNotifier {
   Future<void> addSession({
     required String name,
     required int pointsPerAnswer,
+    required int pointsRequiredForReward,
     required String rewardLabel,
     required bool allowRecallUnanswered,
     required bool allowRecallAnswered,
@@ -107,6 +108,7 @@ class RecitroStore extends ChangeNotifier {
         id: _uuid.v4(),
         name: name.trim(),
         pointsPerAnswer: pointsPerAnswer,
+        pointsRequiredForReward: pointsRequiredForReward,
         rewardLabel: rewardLabel.trim(),
         allowRecallUnanswered: allowRecallUnanswered,
         allowRecallAnswered: allowRecallAnswered,
@@ -190,7 +192,7 @@ class RecitroStore extends ChangeNotifier {
     final state = session.studentStates[id];
     if (state == null) return;
     state.outcome = CallOutcome.answered;
-    state.pointsEarned = session.pointsPerAnswer;
+    state.pointsEarned += session.pointsPerAnswer;
     session.pendingStudentId = null;
     await _save();
     notifyListeners();
@@ -202,25 +204,39 @@ class RecitroStore extends ChangeNotifier {
     final state = session.studentStates[id];
     if (state == null) return;
     state.outcome = CallOutcome.notAnswered;
-    state.pointsEarned = 0;
     session.pendingStudentId = null;
     await _save();
     notifyListeners();
   }
 
+  bool canClaimReward(RecitationSession session, String studentId) {
+    final state = session.studentStates[studentId];
+    if (state == null || state.rewardClaimed) return false;
+    if (state.outcome != CallOutcome.answered) return false;
+    return state.pointsEarned >= session.pointsRequiredForReward;
+  }
+
+  int pointsUntilClaim(RecitationSession session, String studentId) {
+    final state = session.studentStates[studentId];
+    if (state == null) return session.pointsRequiredForReward;
+    return (session.pointsRequiredForReward - state.pointsEarned)
+        .clamp(0, session.pointsRequiredForReward);
+  }
+
   Future<bool> claimReward(RecitationSession session, String studentId) async {
     final state = session.studentStates[studentId];
-    if (state == null || state.outcome != CallOutcome.answered) return false;
-    if (state.rewardClaimed) return false;
+    if (state == null || !canClaimReward(session, studentId)) return false;
 
+    final payout = state.pointsEarned;
     state.rewardClaimed = true;
+    state.pointsEarned = 0;
     _ledger.add(
       PointLedgerEntry(
         id: _uuid.v4(),
         studentId: studentId,
         sessionId: session.id,
         sessionName: session.name,
-        points: session.pointsPerAnswer,
+        points: payout,
         rewardLabel: session.rewardLabel,
         earnedAt: DateTime.now(),
       ),

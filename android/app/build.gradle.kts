@@ -48,12 +48,50 @@ flutter {
     source = "../.."
 }
 
-// Flutter tool always adb-installs app-debug.apk; when split-per-abi is on, Gradle emits app-x86_64-debug.apk
-// (~60 MB). Copy it over the universal name so Android Studio / flutter run install succeeds on Pixel 8.
-tasks.configureEach {
-    if (name == "assembleDebug") {
+val recitroRoot = rootProject.projectDir.parentFile!!
+val ensureEmulatorScript = recitroRoot.resolve("scripts/ensure-pixel8-ready.ps1")
+
+fun runRecitroEnsureEmulator(phase: String) {
+    if (!ensureEmulatorScript.isFile) return
+    if (System.getenv("CI") != null) return
+    logger.lifecycle("Recitro: $phase — wait for emulator-5554 Package Manager…")
+    val process =
+        ProcessBuilder(
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                ensureEmulatorScript.absolutePath,
+                "-DeviceId",
+                "emulator-5554",
+                "-TimeoutMinutes",
+                "8",
+            )
+            .directory(recitroRoot)
+            .inheritIO()
+            .start()
+    val code = process.waitFor()
+    if (code != 0) {
+        throw org.gradle.api.GradleException(
+            "Recitro: emulator not ready for adb install (exit $code). " +
+                "Run: .\\scripts\\stop-all-emulators.ps1 then .\\scripts\\start-pixel8-emulator.ps1 -Wait"
+        )
+    }
+}
+
+// Runs even when assembleDebug is UP-TO-DATE so Flutter adb install does not hit "Can't find service: package".
+tasks.register("recitroEnsureEmulatorInstallable") {
+    outputs.upToDateWhen { false }
+    doLast { runRecitroEnsureEmulator("before adb install") }
+}
+
+afterEvaluate {
+    tasks.named("assembleDebug").configure {
+        finalizedBy("recitroEnsureEmulatorInstallable")
+        doFirst { runRecitroEnsureEmulator("before debug assemble") }
         doLast {
-            val apkDir = rootProject.projectDir.parentFile.resolve("build/app/outputs/flutter-apk")
+            val apkDir = recitroRoot.resolve("build/app/outputs/flutter-apk")
             val split = apkDir.resolve("app-x86_64-debug.apk")
             val installApk = apkDir.resolve("app-debug.apk")
             if (split.isFile) {

@@ -160,9 +160,7 @@ class StudentsTab extends StatelessWidget {
     var n = 0;
     for (final session in store.sessions) {
       final state = session.studentStates[studentId];
-      if (state != null &&
-          state.outcome == CallOutcome.answered &&
-          !state.rewardClaimed) {
+      if (store.canClaimReward(session, studentId)) {
         n++;
       }
     }
@@ -174,9 +172,7 @@ class StudentsTab extends StatelessWidget {
     RecitationSession? target;
     for (final session in store.sessions) {
       final state = session.studentStates[studentId];
-      if (state != null &&
-          state.outcome == CallOutcome.answered &&
-          !state.rewardClaimed) {
+      if (store.canClaimReward(session, studentId)) {
         target = session;
         break;
       }
@@ -185,11 +181,14 @@ class StudentsTab extends StatelessWidget {
     final student = store.studentById(studentId);
     if (student == null) return;
 
+    final state = target.studentStates[studentId]!;
     await showRewardCenterDialog(
       context: context,
       studentName: student.name,
       rewardLabel: target.rewardLabel,
-      points: target.pointsPerAnswer,
+      pointsEarned: state.pointsEarned,
+      pointsRequired: target.pointsRequiredForReward,
+      canClaim: true,
       onClaim: () => store.claimReward(target!, studentId),
     );
   }

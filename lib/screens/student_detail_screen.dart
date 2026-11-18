@@ -28,8 +28,9 @@ class StudentDetailScreen extends StatelessWidget {
       final state = session.studentStates[studentId];
       if (state != null &&
           state.outcome == CallOutcome.answered &&
-          !state.rewardClaimed) {
-        pendingClaims.add(_PendingClaim(session));
+          !state.rewardClaimed &&
+          state.pointsEarned > 0) {
+        pendingClaims.add(_PendingClaim(session, state.pointsEarned));
       }
     }
 
@@ -84,7 +85,7 @@ class StudentDetailScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               sliver: SliverToBoxAdapter(
                 child: Text(
-                  'Unclaimed rewards',
+                  'Session reward progress',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -100,10 +101,15 @@ class StudentDetailScreen extends StatelessWidget {
                 itemBuilder: (context, i) {
                   final item = pendingClaims[i];
                   final session = item.session;
+                  final canClaim =
+                      store.canClaimReward(session, studentId);
+                  final need = session.pointsRequiredForReward - item.points;
                   return FilledButton.icon(
-                    onPressed: () async {
-                      await store.claimReward(session, studentId);
-                    },
+                    onPressed: canClaim
+                        ? () async {
+                            await store.claimReward(session, studentId);
+                          }
+                        : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: scheme.secondary,
                       foregroundColor: scheme.onSecondary,
@@ -111,7 +117,10 @@ class StudentDetailScreen extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.redeem_rounded),
                     label: Text(
-                        'Claim ${session.rewardLabel} (+${session.pointsPerAnswer})'),
+                      canClaim
+                          ? 'Claim ${session.rewardLabel} (${item.points} pts)'
+                          : '${session.rewardLabel}: ${item.points}/${session.pointsRequiredForReward} (need $need)',
+                    ),
                   );
                 },
               ),
@@ -151,6 +160,7 @@ class StudentDetailScreen extends StatelessWidget {
 }
 
 class _PendingClaim {
-  _PendingClaim(this.session);
+  _PendingClaim(this.session, this.points);
   final RecitationSession session;
+  final int points;
 }

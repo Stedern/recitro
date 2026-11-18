@@ -5,6 +5,7 @@ class RecitationSession {
     required this.id,
     required this.name,
     required this.pointsPerAnswer,
+    required this.pointsRequiredForReward,
     required this.rewardLabel,
     required this.allowRecallUnanswered,
     required this.allowRecallAnswered,
@@ -15,6 +16,7 @@ class RecitationSession {
   final String id;
   String name;
   int pointsPerAnswer;
+  int pointsRequiredForReward;
   String rewardLabel;
   bool allowRecallUnanswered;
   bool allowRecallAnswered;
@@ -25,6 +27,7 @@ class RecitationSession {
         'id': id,
         'name': name,
         'pointsPerAnswer': pointsPerAnswer,
+        'pointsRequiredForReward': pointsRequiredForReward,
         'rewardLabel': rewardLabel,
         'allowRecallUnanswered': allowRecallUnanswered,
         'allowRecallAnswered': allowRecallAnswered,
@@ -39,6 +42,8 @@ class RecitationSession {
         id: json['id'] as String,
         name: json['name'] as String,
         pointsPerAnswer: json['pointsPerAnswer'] as int,
+        pointsRequiredForReward: json['pointsRequiredForReward'] as int? ??
+            (json['pointsPerAnswer'] as int),
         rewardLabel: (json['rewardLabel'] as String?) ?? 'Reward',
         allowRecallUnanswered: json['allowRecallUnanswered'] as bool,
         allowRecallAnswered: json['allowRecallAnswered'] as bool? ?? false,

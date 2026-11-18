@@ -35,6 +35,11 @@ $boot = & $adb -s $DeviceId shell getprop sys.boot_completed 2>$null
 if ($boot -notmatch "1") {
   Write-Error "Android not finished booting (boot_completed=$boot). Wait for the home screen, then retry."
 }
-& $adb -s $DeviceId shell am force-stop $package 2>$null
+$p = Start-Process -FilePath $adb -ArgumentList @("-s", $DeviceId, "shell", "am", "force-stop", $package) `
+  -NoNewWindow -PassThru
+if (-not $p.WaitForExit(15000)) {
+  try { $p.Kill() } catch { }
+  Write-Host "force-stop timed out (emulator slow) — continuing with uninstall." -ForegroundColor Yellow
+}
 & $adb -s $DeviceId uninstall $package 2>$null
 Write-Host "Uninstalled $package (if it was present). Run again: flutter run -d $DeviceId"

@@ -2,6 +2,24 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Ensure Pixel 8 ready",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/ensure-pixel8-ready.ps1"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
       "label": "Start Pixel 8 emulator",
       "type": "shell",
       "command": "powershell",
@@ -11,6 +29,7 @@
         "Bypass",
         "-File",
         "${workspaceFolder}/scripts/start-pixel8-emulator.ps1",
+        "-KeepIfReady",
         "-Wait"
       ],
       "problemMatcher": [],
@@ -18,6 +37,25 @@
         "reveal": "always",
         "panel": "dedicated",
         "focus": false
+      }
+    },
+    {
+      "label": "Reset Recitro on Android",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/reset-android-app.ps1",
+        "-DeviceId",
+        "emulator-5554"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
       }
     }
   ]

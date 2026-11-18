@@ -1,8 +1,10 @@
-# Start Pixel 8 (API 37, Google Play) with settings that work on ~8 GB host RAM.
+﻿# Start Pixel 8 (API 37, Google Play) with settings that work on ~8 GB host RAM.
 # Usage: .\scripts\start-pixel8-emulator.ps1 [-WipeData] [-Wait]
 param(
   [switch]$WipeData,
-  [switch]$Wait
+  [switch]$Wait,
+  [switch]$KeepIfReady,
+  [string]$DeviceId = "emulator-5554"
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,44 +16,39 @@ if (-not (Test-Path $emulator)) {
   Write-Error "Android emulator not found at $emulator"
 }
 
-# One emulator at a time avoids adb showing duplicate/offline devices.
-Get-Process emulator, qemu-system-x86_64 -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Seconds 2
-& $adb kill-server | Out-Null
-& $adb start-server | Out-Null
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($KeepIfReady) {
+  & $adb start-server 2>$null | Out-Null
+  $state = (& $adb devices 2>$null) | Where-Object { $_ -match "^$DeviceId\s+device\s*$" }
+  if ($state) {
+    $waitScript = Join-Path $scriptDir "wait-android-boot.ps1"
+    & $waitScript -DeviceId $DeviceId -TimeoutMinutes 2
+    if ($LASTEXITCODE -eq 0) {
+      if (-not $Wait) { return $DeviceId }
+      return $DeviceId
+    }
+    Write-Host "Pixel 8 was not fully ready — cold restarting AVD..." -ForegroundColor Yellow
+  }
+}
+
+& (Join-Path $scriptDir "stop-all-emulators.ps1")
 
 $args = @(
   "-avd", "Pixel_8",
   "-no-snapshot-load",
   "-no-boot-anim",
-  "-memory", "3072",
+  "-memory", "2048",
   "-cores", "2",
-  "-gpu", "angle_indirect"
+  "-gpu", "swiftshader_indirect"
 )
 if ($WipeData) { $args += "-wipe-data" }
 
 Write-Host "Starting Pixel 8 (API 37, Google Play)..." -ForegroundColor Cyan
 Start-Process -FilePath $emulator -ArgumentList $args -WindowStyle Normal | Out-Null
+Start-Sleep -Seconds 8
 
 if (-not $Wait) { return }
 
-Write-Host "Waiting for boot (up to 6 minutes on first cold boot)..." -ForegroundColor Cyan
-$deadline = (Get-Date).AddMinutes(6)
-do {
-  $lines = & $adb devices 2>&1
-  foreach ($line in $lines) {
-    if ($line -match "^emulator-\d+\s+device$") {
-      $id = ($line -split "\s+")[0]
-      $boot = & $adb -s $id shell getprop sys.boot_completed 2>$null
-      if ($boot -eq "1") {
-        $api = & $adb -s $id shell getprop ro.build.version.sdk
-        Write-Host "Ready: $id (API $api)" -ForegroundColor Green
-        return $id
-      }
-    }
-  }
-  Start-Sleep -Seconds 5
-} while ((Get-Date) -lt $deadline)
-
-Write-Host "Emulator did not reach 'device' state. Close other apps to free RAM, then retry with -WipeData." -ForegroundColor Red
-exit 1
+& (Join-Path $scriptDir "wait-android-boot.ps1") -DeviceId $DeviceId -TimeoutMinutes 8
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+return $DeviceId

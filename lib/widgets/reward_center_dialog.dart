@@ -4,7 +4,9 @@ Future<void> showRewardCenterDialog({
   required BuildContext context,
   required String studentName,
   required String rewardLabel,
-  required int points,
+  required int pointsEarned,
+  required int pointsRequired,
+  required bool canClaim,
   required Future<void> Function() onClaim,
   bool alreadyClaimed = false,
 }) {
@@ -12,6 +14,7 @@ Future<void> showRewardCenterDialog({
     context: context,
     builder: (dialogContext) {
       final scheme = Theme.of(dialogContext).colorScheme;
+      final until = (pointsRequired - pointsEarned).clamp(0, pointsRequired);
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         child: ConstrainedBox(
@@ -59,28 +62,26 @@ Future<void> showRewardCenterDialog({
                       ),
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.stars_rounded, color: scheme.secondary, size: 28),
-                      const SizedBox(width: 8),
-                      Text(
-                        '+$points',
-                        style: Theme.of(dialogContext)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
+                Text(
+                  'Session points: $pointsEarned / $pointsRequired',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: (pointsEarned / pointsRequired).clamp(0.0, 1.0),
+                  backgroundColor: scheme.primary.withValues(alpha: 0.1),
+                  color: scheme.secondary,
+                  minHeight: 8,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                if (!alreadyClaimed && !canClaim) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '$until more point(s) needed to claim.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.outline, fontSize: 13),
+                  ),
+                ],
                 const SizedBox(height: 28),
                 if (alreadyClaimed)
                   Icon(Icons.verified_rounded, color: scheme.tertiary, size: 40)
@@ -88,14 +89,20 @@ Future<void> showRewardCenterDialog({
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () async {
-                        await onClaim();
-                        if (dialogContext.mounted) {
-                          Navigator.of(dialogContext).pop();
-                        }
-                      },
+                      onPressed: canClaim
+                          ? () async {
+                              await onClaim();
+                              if (dialogContext.mounted) {
+                                Navigator.of(dialogContext).pop();
+                              }
+                            }
+                          : null,
                       icon: const Icon(Icons.handshake_rounded),
-                      label: const Text('Claim reward'),
+                      label: Text(
+                        canClaim
+                            ? 'Claim reward ($pointsEarned pts)'
+                            : 'Need $until more pts',
+                      ),
                       style: FilledButton.styleFrom(
                         backgroundColor: scheme.secondary,
                         foregroundColor: scheme.onSecondary,
@@ -107,7 +114,7 @@ Future<void> showRewardCenterDialog({
                     width: double.infinity,
                     child: TextButton(
                       onPressed: () => Navigator.of(dialogContext).pop(),
-                      child: const Text('Skip for now'),
+                      child: const Text('Close'),
                     ),
                   ),
                 ],
