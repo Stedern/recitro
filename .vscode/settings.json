@@ -1,0 +1,7 @@
+{
+  "dart.flutterSdkPath": "C:\\Users\\Jay\\develop\\flutter",
+  "dart.previewFlutterUiGuides": true,
+  "dart.flutterDeviceId": "android",
+  "dart.flutterSelectDeviceWhenConnected": false,
+  "dart.flutterRunAdditionalArgs": ["-d", "android", "--target-platform=android-x64"]
+}
